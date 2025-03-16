@@ -17,19 +17,19 @@ from utils.helper import early_stopping
 import logging
 
 import torch as t
-import Utils.TimeLogger as logger
-from Utils.TimeLogger import log
+import utils.TimeLogger as logger
+from utils.TimeLogger import log
 from Params import args
 from Model import TransGNN
 from DataHandler import DataHandler
 import numpy as np
 import pickle
-from Utils.Utils import *
+from utils.Utils import *
 import os
 import setproctitle
 
 ###############transGNN部分
-g_trans_u_embeddings, g_trans_i_embeddings
+
 
 class Coach:
     def __init__(self, handler):
@@ -333,10 +333,15 @@ def topk_eval(model, train_data, data):
     return recall
     # _show_recall_info(zip(k_list, recall))
 
+#####transGNN
+g_trans_u_embeddings=[]
+g_trans_i_embeddings=[]
+
+
 if __name__ == '__main__':
 
     #####transGNN
-    global g_trans_u_embeddings, g_trans_i_embeddings
+    #global g_trans_u_embeddings, g_trans_i_embeddings
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     setproctitle.setproctitle('proc_title')
     logger.saveDefault = True

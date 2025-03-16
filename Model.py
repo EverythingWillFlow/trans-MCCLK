@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from Params import args
-from Utils.Utils import pairPredict
+from utils.Utils import pairPredict
 from Transformer import Encoder_Layer, TransformerEncoderLayer
 
 class TransGNN(nn.Module):

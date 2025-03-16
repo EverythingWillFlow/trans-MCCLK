@@ -3,7 +3,7 @@ import numpy as np
 from scipy.sparse import csr_matrix, coo_matrix, dok_matrix
 from Params import args
 import scipy.sparse as sp
-from Utils.TimeLogger import log
+from utils.TimeLogger import log
 import torch as t
 import torch.utils.data as data
 import torch.utils.data as dataloader
@@ -20,15 +20,12 @@ class DataHandler:
 		# 	predir = 'Data/gowalla/'
 		# elif args.data == 'amazon-book':
 		# 	predir = 'Data/amazon-book/'
-		if args.data == 'music':
-			predir = 'Data/amazon-book/'
+		if args.dataset == 'music':
+		    predir = 'data/music/'
 		self.predir = predir
 		self.trnfile = predir + 'trnMat.pkl'
 		self.tstfile = predir + 'tstMat.pkl'
 
-'''
-加载 pkl 文件，并转换为 scipy.sparse.coo_matrix 类型的稀疏矩阵。
-'''
 
 	def loadOneFile(self, filename):
 		with open(filename, 'rb') as fs:
@@ -36,14 +33,7 @@ class DataHandler:
 		if type(ret) != coo_matrix:
 			ret = sp.coo_matrix(ret)
 		return ret
-"""
-计算归一化的邻接矩阵：
 
-    计算度矩阵 degree = np.array(mat.sum(axis=-1))
-    计算 D^{-0.5}（度矩阵的逆平方根），避免除零错误
-    归一化邻接矩阵 D^{-0.5} * A * D^{-0.5}
-
-"""
 	def normalizeAdj(self, mat):
 		degree = np.array(mat.sum(axis=-1))
 		dInvSqrt = np.reshape(np.power(degree, -0.5), [-1])
@@ -51,14 +41,7 @@ class DataHandler:
 		dInvSqrtMat = sp.diags(dInvSqrt)
 		return mat.dot(dInvSqrtMat).transpose().dot(dInvSqrtMat).tocoo()
 
-"""
-构造 PyTorch 张量的邻接矩阵：
 
-    创建用户-物品的交互矩阵，并扩展成 UI 形式的邻接矩阵
-    归一化
-    转换为 PyTorch 的 FloatTensor 并移动到 CUDA 设备上
-
-"""
 
 	def makeTorchAdj(self, mat):
 		# make ui adj
@@ -74,28 +57,12 @@ class DataHandler:
 		vals = t.from_numpy(mat.data.astype(np.float32))
 		shape = t.Size(mat.shape)
 		return t.sparse.FloatTensor(idxs, vals, shape).cuda()
-"""
-生成用户-物品的采样索引矩阵：
 
-    user_sample_idx：用户索引
-    item_sample_idx：物品索引
-
-"""
 	def makeSample(self):
 		user_sample_idx = t.tensor([[args.user + i for i in range(args.item)] * args.user])
 		item_sample_idx = t.tensor([[i for i in range(args.user)] * args.item])
 		return user_sample_idx, item_sample_idx
-"""
-生成 PyTorch 版的掩码矩阵 mask：
 
-    u_u_mask（用户-用户）：全零矩阵
-    u_i_mask（用户-物品）：全一矩阵
-    i_i_mask（物品-物品）：全零矩阵
-    i_u_mask（物品-用户）：全一矩阵
-    拼接 u_mask 和 i_mask 形成最终的 mask
-
-
-"""
 	def makeMask(self):
 		u_u_mask = t.zeros(size=(args.user, args.user), dtype=bool)
 		u_i_mask = t.ones(size=(args.user, args.item), dtype=bool)
@@ -108,14 +75,7 @@ class DataHandler:
 
 		mask = t.concat([u_mask, i_mask], dim=0)
 		return mask
-'''
-加载训练数据和测试数据
-计算 user 和 item 数量
-生成 PyTorch 版本的邻接矩阵 torchBiAdj
-生成掩码矩阵 mask
-使用 DataLoader 加载训练数据和测试数据
 
-'''
 
 	def LoadData(self):
 		trnMat = self.loadOneFile(self.trnfile)
@@ -127,9 +87,7 @@ class DataHandler:
 		self.trnLoader = dataloader.DataLoader(trnData, batch_size=args.batch, shuffle=True, num_workers=0)
 		tstData = TstData(tstMat, trnMat)
 		self.tstLoader = dataloader.DataLoader(tstData, batch_size=args.tstBat, shuffle=False, num_workers=0)
-"""
-TrnMaskedData 类（带负样本的训练数据）
-"""
+
 class TrnMaskedData(data.Dataset):
 	def __init__(self, coomat):
 		self.rows = coomat.row
