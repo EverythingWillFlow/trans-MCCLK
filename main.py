@@ -342,7 +342,7 @@ if __name__ == '__main__':
 
     #####transGNN
     #global g_trans_u_embeddings, g_trans_i_embeddings
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    os.environ['CUDA_VISIBLE_DEVICES'] ="0"
     setproctitle.setproctitle('proc_title')
     logger.saveDefault = True
 
