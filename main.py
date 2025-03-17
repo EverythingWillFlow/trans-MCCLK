@@ -67,13 +67,13 @@ class Coach:
             tstFlag = (ep % args.tstEpoch == 0)
             reses = self.trainEpoch()
             log(self.makePrint('Train', ep, reses, tstFlag))
-            # if tstFlag:
-            #     reses = self.testEpoch()
-            #     log(self.makePrint('Test', ep, reses, tstFlag))
-            #     self.saveHistory()
-            # print()
-        # reses = self.testEpoch()
-        # log(self.makePrint('Test', args.epoch, reses, True))
+            if tstFlag:
+                reses = self.testEpoch()
+                log(self.makePrint('Test', ep, reses, tstFlag))
+                self.saveHistory()
+            print()
+        reses = self.testEpoch()
+        log(self.makePrint('Test', args.epoch, reses, True))
         self.saveHistory()
 
     def prepareModel(self):
