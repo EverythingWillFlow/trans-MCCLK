@@ -30,8 +30,8 @@ data = np.array(data_list)
 # print(row)
 coo_m = coo_matrix((data, (row, col)))
 
-#save_f = open(tstMat_save_path, 'wb')
-save_f = open(trnMat_save_path, 'wb')
+save_f = open(tstMat_save_path, 'wb')
+#save_f = open(trnMat_save_path, 'wb')
 pickle.dump(coo_m, save_f)
 save_f.close()
 

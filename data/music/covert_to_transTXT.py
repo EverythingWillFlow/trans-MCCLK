@@ -17,11 +17,13 @@ with open(input_file, 'r') as file:
         item_id = parts[1]  # 第二列是物品ID
         rating = parts[2]   # 第三列是评分（0或1）
 
+
         # 如果用户ID已经在字典中，将物品ID添加到对应的列表中
-        if user_id in merged_data:
-            merged_data[user_id].append(item_id)
-        else:
-            merged_data[user_id] = [item_id]
+        if rating=="1":
+            if user_id in merged_data :
+                merged_data[user_id].append(item_id)
+            else :
+                merged_data[user_id] = [item_id]
 
 # 将合并后的数据写入输出文件
 with open(output_file, 'w') as file:
