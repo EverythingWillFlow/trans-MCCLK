@@ -14,6 +14,7 @@ from modules.MCCLK import Recommender
 from utils.evaluate import test
 from utils.helper import early_stopping
 
+
 import logging
 
 import torch as t
@@ -66,7 +67,7 @@ class Coach:
         for ep in range(stloc, args.epoch):
             tstFlag = (ep % args.tstEpoch == 0)
             reses = self.trainEpoch()
-            log(self.makePrint('Train', ep, reses, tstFlag))
+            log(self.makePrint('Train', ep, reses[0], tstFlag))
             if tstFlag:
                 reses = self.testEpoch()
                 log(self.makePrint('Test', ep, reses, tstFlag))
@@ -160,21 +161,21 @@ class Coach:
     def saveHistory(self):
         if args.epoch == 0:
             return
-        with open('../History/' + args.save_path + '.his', 'wb') as fs:
+        with open(args.save_path + '.his', 'wb') as fs:
             pickle.dump(self.metrics, fs)
 
         content = {
             'model': self.model,
         }
-        t.save(content, '../Models/' + args.save_path + '.mod')
+        t.save(content, args.save_path + '.mod')
         log('Model Saved: %s' % args.save_path)
 
     def loadModel(self):
-        ckp = t.load('../Models/' + args.load_model + '.mod')
+        ckp = t.load(args.load_model + '.mod')
         self.model = ckp['model']
         self.opt = t.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=0)
 
-        with open('../History/' + args.load_model + '.his', 'rb') as fs:
+        with open( args.load_model + '.his', 'rb') as fs:
             self.metrics = pickle.load(fs)
         log('Model Loaded')
 
@@ -334,8 +335,8 @@ def topk_eval(model, train_data, data):
     # _show_recall_info(zip(k_list, recall))
 
 #####transGNN
-g_trans_u_embeddings=[]
-g_trans_i_embeddings=[]
+g_trans_u_embeddings=None
+g_trans_i_embeddings=None
 
 
 if __name__ == '__main__':
