@@ -5,15 +5,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_scatter import scatter_mean, scatter_softmax, scatter_sum
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from main
 '''
-Aggregator:
+Aggregator:f
 
     负责在知识图谱(KG)中进行聚合操作。
     聚合节点及其邻居的信息，利用关系类型的嵌入作为权重计算节点的表示。
     forward 方法处理节点嵌入、用户嵌入以及边的索引和类型，计算出新的节点和用户聚合表示。
-
+f
 
 '''
+
 class Aggregator(nn.Module):
     def __init__(self, n_users):
         super(Aggregator, self).__init__()
@@ -326,6 +329,9 @@ class Recommender(nn.Module):
         value_new = torch.cat((value_old, value_old), dim=-1)
         interact_graph = torch.sparse.FloatTensor(indice_new, value_new, torch.Size([self.n_users + self.n_entities, self.n_users + self.n_entities]))
         user_lightgcn_emb, item_lightgcn_emb = self.light_gcn(user_emb, item_emb, interact_graph)
+        print(user)
+        print(user.shape)
+
         u_e_2 = user_lightgcn_emb[user]
         i_e_2 = item_lightgcn_emb[item]
        
