@@ -95,9 +95,9 @@ class Coach:
             negs = negs.long().cuda()
 
             ########for mcclk
-            global g_trans_u_embeddings, g_trans_i_embeddings
 
-            bprLoss,g_trans_u_embeddings, g_trans_i_embeddings = self.model.calcLosses(ancs, poss, negs, self.handler.torchBiAdj)
+
+            bprLoss,global_config.g_trans_u_embeddings, global_config.g_trans_i_embeddings = self.model.calcLosses(ancs, poss, negs, self.handler.torchBiAdj)
             loss = bprLoss
 
 
@@ -111,7 +111,7 @@ class Coach:
         ret = dict()
         ret['Loss'] = epLoss / steps
         ret['preLoss'] = epPreLoss / steps
-        return ret,g_trans_u_embeddings, g_trans_i_embeddings
+        return ret,global_config.g_trans_u_embeddings, global_config.g_trans_i_embeddings
 
     def testEpoch(self):
         tstLoader = self.handler.tstLoader
@@ -335,8 +335,6 @@ def topk_eval(model, train_data, data):
     # _show_recall_info(zip(k_list, recall))
 
 #####transGNN
-g_trans_u_embeddings=None
-g_trans_i_embeddings=None
 
 
 if __name__ == '__main__':
