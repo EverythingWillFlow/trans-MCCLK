@@ -5,8 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_scatter import scatter_mean, scatter_softmax, scatter_sum
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from main
+import global_config
 '''
 Aggregator:f
 
@@ -435,9 +434,9 @@ class Recommender(nn.Module):
         # all_embeddings = all_embeddings.mean(dim=1, keepdim=False)
         # u_g_embeddings, i_g_embeddings = torch.split(all_embeddings, [self.n_users, self.n_entities], dim=0)
         # return u_g_embeddings, i_g_embeddings
-        global g_trans_u_embeddings,g_trans_i_embeddings
-        u_g_embeddings = g_trans_u_embeddings
-        i_g_embeddings = g_trans_i_embeddings
+        #global g_trans_u_embeddings,g_trans_i_embeddings
+        u_g_embeddings = global_config.g_trans_u_embeddings
+        i_g_embeddings =  global_config.g_trans_i_embeddings
         return u_g_embeddings, i_g_embeddings
 
     def create_bpr_loss(self, users, items, labels, loss_contrast):
