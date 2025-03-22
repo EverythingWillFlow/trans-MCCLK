@@ -28,6 +28,7 @@ import pickle
 from utils.Utils import *
 import os
 import setproctitle
+import global_config
 
 ###############transGNN部分
 
