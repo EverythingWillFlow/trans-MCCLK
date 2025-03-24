@@ -430,6 +430,7 @@ if __name__ == '__main__':
         train_s_t = time()
         while s + args.batch_size <= len(train_cf):
             batch = get_feed_dict(train_cf, s, s + args.batch_size)
+            print(batch)
             batch_loss, _, _, _ = model(batch)
             # batch_loss = batch_loss
             optimizer.zero_grad()
