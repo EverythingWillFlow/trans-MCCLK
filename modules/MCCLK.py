@@ -331,8 +331,10 @@ class Recommender(nn.Module):
         print(user)
         print(user.shape)
 
-        u_e_2 = user_lightgcn_emb[user]
-        i_e_2 = item_lightgcn_emb[item]
+        u_e_2 = user_lightgcn_emb[0]
+        i_e_2 = item_lightgcn_emb[0]
+
+        
        
         # # loss_contrast = 0
         # loss_contrast = self.alpha * self.calculate_loss(i_e_1, i_e_2)
@@ -349,24 +351,48 @@ class Recommender(nn.Module):
         loss_contrast = loss_contrast + self.calculate_loss_1(item_1, i_e_2)
         loss_contrast = loss_contrast + self.calculate_loss_2(user_1, u_e_2)
 
+        u_e_2 = u_e_2.expand(u_e.size(0), -1)  # 扩展到 (4096, D)
+        i_e_2 = i_e_2.unsqueeze(0).expand(i_e.size(0), -1)  # 扩展到 (N, D)
+
         u_e = torch.cat((u_e, u_e_2, u_e_2), dim=-1)
         i_e = torch.cat((i_e, i_e_1, i_e_2), dim=-1)
 
         return self.create_bpr_loss(u_e, i_e, labels, loss_contrast)
 
     def sim(self, z1: torch.Tensor, z2: torch.Tensor):
-        z1 = F.normalize(z1)
-        z2 = F.normalize(z2)
-        return torch.mm(z1, z2.t())
+        z1 = F.normalize(z1,dim=0)
+        z2 = F.normalize(z2,dim=0)
+        print(f"z2 shape: {z2.shape}")
+
+        return torch.matmul(z1, z2.t())
 
     def calculate_loss(self, A_embedding, B_embedding):
         # first calculate the sim rec
         tau = 0.6    # default = 0.8
         f = lambda x: torch.exp(x / tau)
+        # print(f"A_embedding shape before reshape: {A_embedding.shape}")
+        # A_embedding = A_embedding.view(1, 64)  # 调整形状
+        # print(f"A_embedding shape after reshape: {A_embedding.shape}")
+
+        print(f"B_embedding shape before reshape: {B_embedding.shape}")
+        B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)  # 在最后补 32 维零
+        print(f"B_embedding shape after reshape: {B_embedding.shape}")
+
         A_embedding = self.fc1(A_embedding)
         B_embedding = self.fc1(B_embedding)
         refl_sim = f(self.sim(A_embedding, A_embedding))
         between_sim = f(self.sim(A_embedding, B_embedding))
+
+        print(f"between_sim shape: {between_sim.shape}")  # 调试
+        print(f"refl_sim shape: {refl_sim.shape}")  # 调试
+
+        # 确保 between_sim 是 2D
+        if len(between_sim.shape) == 1:
+            between_sim = between_sim.unsqueeze(1)
+
+# 确保 refl_sim 是 2D
+        if len(refl_sim.shape) == 1:
+            refl_sim = refl_sim.view(-1, 1)
 
         loss_1 = -torch.log(
             between_sim.diag()
@@ -386,18 +412,37 @@ class Recommender(nn.Module):
         tau = 0.6    # default = 0.8
         f = lambda x: torch.exp(x / tau)
         A_embedding = self.fc2(A_embedding)
+        B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)
         B_embedding = self.fc2(B_embedding)
+
         refl_sim = f(self.sim(A_embedding, A_embedding))
         between_sim = f(self.sim(A_embedding, B_embedding))
+
+                # 确保 between_sim 是 2D
+        if len(between_sim.shape) == 1:
+            between_sim = between_sim.unsqueeze(1)
+
+# 确保 refl_sim 是 2D
+        if len(refl_sim.shape) == 1:
+            refl_sim = refl_sim.view(-1, 1)
 
         loss_1 = -torch.log(
             between_sim.diag()
             / (refl_sim.sum(1) + between_sim.sum(1) - refl_sim.diag()))
         refl_sim_1 = f(self.sim(B_embedding, B_embedding))
         between_sim_1 = f(self.sim(B_embedding, A_embedding))
+
+        if len(between_sim_1.shape) == 1:
+            between_sim_1 = between_sim_1.unsqueeze(1)
+
+# 确保 refl_sim 是 2D
+        if len(refl_sim_1.shape) == 0:
+            refl_sim_1 = refl_sim_1.view(1, 1)
+        
         loss_2 = -torch.log(
             between_sim_1.diag()
             / (refl_sim_1.sum(1) + between_sim_1.sum(1) - refl_sim_1.diag()))
+        
         ret = (loss_1 + loss_2) * 0.5
         ret = ret.mean()
         return ret
@@ -407,15 +452,32 @@ class Recommender(nn.Module):
         tau = 0.6    # default = 0.8
         f = lambda x: torch.exp(x / tau)
         A_embedding = self.fc3(A_embedding)
+        B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)
         B_embedding = self.fc3(B_embedding)
         refl_sim = f(self.sim(A_embedding, A_embedding))
         between_sim = f(self.sim(A_embedding, B_embedding))
+
+                # 确保 between_sim 是 2D
+        if len(between_sim.shape) == 1:
+            between_sim = between_sim.unsqueeze(1)
+
+# 确保 refl_sim 是 2D
+        if len(refl_sim.shape) == 1:
+            refl_sim = refl_sim.view(-1, 1)
 
         loss_1 = -torch.log(
             between_sim.diag()
             / (refl_sim.sum(1) + between_sim.sum(1) - refl_sim.diag()))
         refl_sim_1 = f(self.sim(B_embedding, B_embedding))
         between_sim_1 = f(self.sim(B_embedding, A_embedding))
+
+        if len(between_sim_1.shape) == 1:
+            between_sim_1 = between_sim_1.unsqueeze(1)
+
+# 确保 refl_sim 是 2D
+        if len(refl_sim_1.shape) == 0:
+            refl_sim_1 = refl_sim_1.view(1, 1)
+
         loss_2 = -torch.log(
             between_sim_1.diag()
             / (refl_sim_1.sum(1) + between_sim_1.sum(1) - refl_sim_1.diag()))
@@ -441,6 +503,15 @@ class Recommender(nn.Module):
 
     def create_bpr_loss(self, users, items, labels, loss_contrast):
         batch_size = users.shape[0]
+        # 检查两个张量的维度
+        print("items shape:", items.shape)
+        print("users shape:", users.shape)
+
+# 如果 users 的维度是 (batch_size, 128)，而 items 的维度是 (batch_size, 160)，你需要确保它们相同
+# 例如，如果 items 的形状是 (batch_size, 160)，你可能需要调整为 (batch_size, 128)
+# 方法之一是切割（如果不想改变其他的操作流程）
+        items = items[:, :128]  # 保留前 128 列
+
         scores = (items * users).sum(dim=1)
         scores = torch.sigmoid(scores)
         criteria = nn.BCELoss()
