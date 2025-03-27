@@ -104,9 +104,9 @@ class Coach:
 
 
             epLoss += loss.item()
-            epPreLoss += bprLoss.item()
+            epPreLoss = epPreLoss+bprLoss.item()
             self.opt.zero_grad()
-            loss.backward()
+            loss.backward(retain_graph=True)
             self.opt.step()
             log('Step %d/%d: loss = %.3f         ' % (i, steps, loss), save=False, oneline=True)
         ret = dict()
@@ -121,7 +121,7 @@ class Coach:
         num = tstLoader.dataset.__len__()
         steps = num // args.tstBat
         for usr, trnMask in tstLoader:
-            i += 1
+            i = i+1
             usr = usr.long().cuda()
             trnMask = trnMask.cuda()
             usrEmbeds, itmEmbeds = self.model.predict(self.handler.torchBiAdj)
@@ -129,8 +129,8 @@ class Coach:
             allPreds = t.mm(usrEmbeds[usr], t.transpose(itmEmbeds, 1, 0)) * (1 - trnMask) - trnMask * 1e8
             _, topLocs = t.topk(allPreds, args.topk)
             recall, ndcg = self.calcRes(topLocs.cpu().numpy(), self.handler.tstLoader.dataset.tstLocs, usr)
-            epRecall += recall
-            epNdcg += ndcg
+            epRecall =epRecall+ recall
+            epNdcg = epNdcg+ndcg
             log('Steps %d/%d: recall = %.2f, ndcg = %.2f          ' % (i, steps, recall, ndcg), save=False,
                 oneline=True)
         ret = dict()
@@ -152,11 +152,11 @@ class Coach:
             for val in temTstLocs:
                 if val in temTopLocs:
                     recall += 1
-                    dcg += np.reciprocal(np.log2(temTopLocs.index(val) + 2))
+                    dcg =dcg+ np.reciprocal(np.log2(temTopLocs.index(val) + 2))
             recall = recall / tstNum
             ndcg = dcg / maxDcg
-            allRecall += recall
-            allNdcg += ndcg
+            allRecall =allRecall+ recall
+            allNdcg = allNdcg+ndcg
         return allRecall, allNdcg
 
     def saveHistory(self):
@@ -344,6 +344,7 @@ if __name__ == '__main__':
     #global g_trans_u_embeddings, g_trans_i_embeddings
     os.environ['CUDA_VISIBLE_DEVICES'] ="0"
     setproctitle.setproctitle('proc_title')
+    torch.autograd.set_detect_anomaly(True)
     logger.saveDefault = True
 
     log('Start')
@@ -434,12 +435,13 @@ if __name__ == '__main__':
             batch_loss, _, _, _ = model(batch)
             # batch_loss = batch_loss
             optimizer.zero_grad()
-            batch_loss.backward()
+            torch.cuda.empty_cache()
+            batch_loss.backward(retain_graph=True)
             optimizer.step()
 
-            loss += batch_loss
+            loss = loss +batch_loss
             # cor_loss += batch_cor
-            s += args.batch_size
+            s =s + args.batch_size
 
         train_e_t = time()
         # tsne_plot(model.all_embed, epoch)
