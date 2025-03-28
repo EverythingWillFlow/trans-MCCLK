@@ -257,6 +257,15 @@ class Recommender(nn.Module):
                 nn.ReLU(),
                 nn.Linear(self.emb_size, self.emb_size, bias=True),
                 )
+                # 新增维度转换层
+        self.dim_proj_user = nn.Linear(32, 64)  # 将32维转换为64维
+        self.dim_proj_item = nn.Linear(32, 64)
+        
+        # 初始化投影层权重（保持数值稳定性）
+        nn.init.eye_(self.dim_proj_user.weight)
+        nn.init.zeros_(self.dim_proj_user.bias)
+        nn.init.eye_(self.dim_proj_item.weight)
+        nn.init.zeros_(self.dim_proj_item.bias)
 
     def _init_weight(self):
         initializer = nn.init.xavier_uniform_
@@ -373,13 +382,12 @@ class Recommender(nn.Module):
         # print(f"A_embedding shape before reshape: {A_embedding.shape}")
         # A_embedding = A_embedding.view(1, 64)  # 调整形状
         # print(f"A_embedding shape after reshape: {A_embedding.shape}")
+            # 安全投影
+        # A_embedding = self.dim_unifier(A_embedding.clone())
+        # B_embedding = self.dim_unifier(B_embedding.clone())
 
-        print(f"B_embedding shape before reshape: {B_embedding.shape}")
-        B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)  # 在最后补 32 维零
-        print(f"B_embedding shape after reshape: {B_embedding.shape}")
-
-        A_embedding = self.fc1(A_embedding)
-        B_embedding = self.fc1(B_embedding)
+        A_embedding = self.fc1(A_embedding.clone())
+        B_embedding = self.fc1(B_embedding.clone())
         refl_sim = f(self.sim(A_embedding, A_embedding))
         between_sim = f(self.sim(A_embedding, B_embedding))
 
@@ -411,9 +419,9 @@ class Recommender(nn.Module):
         # first calculate the sim rec
         tau = 0.6    # default = 0.8
         f = lambda x: torch.exp(x / tau)
-        A_embedding = self.fc2(A_embedding)
-        B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)
-        B_embedding = self.fc2(B_embedding)
+        A_embedding = self.fc2(A_embedding.clone())
+        #B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)
+        B_embedding = self.fc2(B_embedding.clone())
 
         refl_sim = f(self.sim(A_embedding, A_embedding))
         between_sim = f(self.sim(A_embedding, B_embedding))
@@ -451,9 +459,9 @@ class Recommender(nn.Module):
         # first calculate the sim rec
         tau = 0.6    # default = 0.8
         f = lambda x: torch.exp(x / tau)
-        A_embedding = self.fc3(A_embedding)
-        B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)
-        B_embedding = self.fc3(B_embedding)
+        A_embedding = self.fc3(A_embedding.clone())
+      #  B_embedding = F.pad(B_embedding, (0, 32), mode='constant', value=0)
+        B_embedding = self.fc3(B_embedding.clone())
         refl_sim = f(self.sim(A_embedding, A_embedding))
         between_sim = f(self.sim(A_embedding, B_embedding))
 
@@ -497,8 +505,24 @@ class Recommender(nn.Module):
         # u_g_embeddings, i_g_embeddings = torch.split(all_embeddings, [self.n_users, self.n_entities], dim=0)
         # return u_g_embeddings, i_g_embeddings
         #global g_trans_u_embeddings,g_trans_i_embeddings
-        u_g_embeddings = global_config.g_trans_u_embeddings
-        i_g_embeddings =  global_config.g_trans_i_embeddings
+        with torch.no_grad():  # 禁止梯度跟踪
+          u_g_embeddings = global_config.g_trans_u_embeddings.clone()
+          i_g_embeddings =  global_config.g_trans_i_embeddings.clone()
+
+                # 维度验证和转换
+        if u_g_embeddings.shape[1] == 32:
+            u_g_embeddings = self.dim_proj_user(u_g_embeddings)
+        if i_g_embeddings.shape[1] == 32:
+            i_g_embeddings = self.dim_proj_item(i_g_embeddings)
+            
+
+        print("Global config shapes:", 
+        u_g_embeddings.shape, 
+        i_g_embeddings.shape)
+
+            # 重新包装为可训练参数
+        u_g_embeddings = nn.Parameter(u_g_embeddings, requires_grad=False)
+        i_g_embeddings = nn.Parameter(i_g_embeddings, requires_grad=False)
         return u_g_embeddings, i_g_embeddings
 
     def create_bpr_loss(self, users, items, labels, loss_contrast):
@@ -510,7 +534,7 @@ class Recommender(nn.Module):
 # 如果 users 的维度是 (batch_size, 128)，而 items 的维度是 (batch_size, 160)，你需要确保它们相同
 # 例如，如果 items 的形状是 (batch_size, 160)，你可能需要调整为 (batch_size, 128)
 # 方法之一是切割（如果不想改变其他的操作流程）
-        items = items[:, :128]  # 保留前 128 列
+        #items = items[:, :128]  # 保留前 128 列
 
         scores = (items * users).sum(dim=1)
         scores = torch.sigmoid(scores)
