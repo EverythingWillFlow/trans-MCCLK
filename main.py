@@ -394,7 +394,11 @@ if __name__ == '__main__':
     model = Recommender(n_params, args, graph, mean_mat_list[0]).to(device)
 
     """define optimizer"""
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+
+   # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
+
 
     cur_best_pre_0 = 0
     stopping_step = 0
@@ -418,7 +422,7 @@ if __name__ == '__main__':
     
     '''
 
-    print("start training ...")
+
     for epoch in range(args.epoch):
         """training CF"""
         # shuffle training data
@@ -437,6 +441,7 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             torch.cuda.empty_cache()
             batch_loss.backward(retain_graph=True)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
             optimizer.step()
 
             loss = loss +batch_loss
