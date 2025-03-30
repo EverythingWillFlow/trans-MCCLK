@@ -235,7 +235,7 @@ class Recommender(nn.Module):
 
         self.adj_mat = adj_mat
         self.graph = graph
-        self.edge_index, self.edge_type = self._get_edges(graph)
+        self.edge_index, self.edge_type = self._get_edges(graph)       
         self._init_weight()
         self.all_embed = nn.Parameter(self.all_embed)
         self.gcn = self._init_model()
@@ -267,10 +267,23 @@ class Recommender(nn.Module):
         nn.init.eye_(self.dim_proj_item.weight)
         nn.init.zeros_(self.dim_proj_item.bias)
 
+    # def _init_weight(self):
+    #     initializer = nn.init.xavier_uniform_
+    #     self.all_embed = initializer(torch.empty(self.n_nodes, self.emb_size))
+    #     self.interact_mat = self._convert_sp_mat_to_sp_tensor(self.adj_mat).to(self.device)
+    
     def _init_weight(self):
-        initializer = nn.init.xavier_uniform_
-        self.all_embed = initializer(torch.empty(self.n_nodes, self.emb_size))
-        self.interact_mat = self._convert_sp_mat_to_sp_tensor(self.adj_mat).to(self.device)
+      initializer = nn.init.xavier_uniform_
+      self.all_embed = initializer(torch.empty(self.n_nodes, self.emb_size))   
+    # 改用Xavier初始化保持稳定性
+      nn.init.xavier_uniform_(self.all_embed)
+    
+    # 投影层特殊初始化（如果存在）
+      if hasattr(self, 'dim_proj_user'):
+          nn.init.eye_(self.dim_proj_user.weight[:64, :32])  # 部分单位矩阵
+          nn.init.zeros_(self.dim_proj_user.bias)
+      self.interact_mat = self._convert_sp_mat_to_sp_tensor(self.adj_mat).to(self.device)
+      
 
     def _init_model(self):
         return GraphConv(channel=self.emb_size,
@@ -337,8 +350,8 @@ class Recommender(nn.Module):
         value_new = torch.cat((value_old, value_old), dim=-1)
         interact_graph = torch.sparse.FloatTensor(indice_new, value_new, torch.Size([self.n_users + self.n_entities, self.n_users + self.n_entities]))
         user_lightgcn_emb, item_lightgcn_emb = self.light_gcn(user_emb, item_emb, interact_graph)
-        print(user)
-        print(user.shape)
+        # print(user)
+        # print(user.shape)
 
         u_e_2 = user_lightgcn_emb[0]
         i_e_2 = item_lightgcn_emb[0]
@@ -371,7 +384,7 @@ class Recommender(nn.Module):
     def sim(self, z1: torch.Tensor, z2: torch.Tensor):
         z1 = F.normalize(z1,dim=0)
         z2 = F.normalize(z2,dim=0)
-        print(f"z2 shape: {z2.shape}")
+        # print(f"z2 shape: {z2.shape}")
 
         return torch.matmul(z1, z2.t())
 
@@ -391,8 +404,8 @@ class Recommender(nn.Module):
         refl_sim = f(self.sim(A_embedding, A_embedding))
         between_sim = f(self.sim(A_embedding, B_embedding))
 
-        print(f"between_sim shape: {between_sim.shape}")  # 调试
-        print(f"refl_sim shape: {refl_sim.shape}")  # 调试
+        # print(f"between_sim shape: {between_sim.shape}")  # 调试
+        # print(f"refl_sim shape: {refl_sim.shape}")  # 调试
 
         # 确保 between_sim 是 2D
         if len(between_sim.shape) == 1:
@@ -521,15 +534,15 @@ class Recommender(nn.Module):
         i_g_embeddings.shape)
 
             # 重新包装为可训练参数
-        u_g_embeddings = nn.Parameter(u_g_embeddings, requires_grad=False)
-        i_g_embeddings = nn.Parameter(i_g_embeddings, requires_grad=False)
+        u_g_embeddings = nn.Parameter(u_g_embeddings)
+        i_g_embeddings = nn.Parameter(i_g_embeddings)
         return u_g_embeddings, i_g_embeddings
 
     def create_bpr_loss(self, users, items, labels, loss_contrast):
         batch_size = users.shape[0]
         # 检查两个张量的维度
-        print("items shape:", items.shape)
-        print("users shape:", users.shape)
+        # print("items shape:", items.shape)
+        # print("users shape:", users.shape)
 
 # 如果 users 的维度是 (batch_size, 128)，而 items 的维度是 (batch_size, 160)，你需要确保它们相同
 # 例如，如果 items 的形状是 (batch_size, 160)，你可能需要调整为 (batch_size, 128)
