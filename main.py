@@ -395,7 +395,8 @@ if __name__ == '__main__':
 
     """define optimizer"""
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)  # 原可能为1e-5
 
    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
@@ -433,15 +434,37 @@ if __name__ == '__main__':
         """training"""
         loss, s, cor_loss = 0, 0, 0
         train_s_t = time()
+        # # 创建极小数据集测试模型能力
+        # test_users = torch.randint(0, 1866, (10,)).cuda()
+        # test_items = torch.randint(0, 3820, (10,)).cuda()
+        # test_labels = torch.ones(10).cuda()  # 全正样本
+
+        # preds = model(test_users, test_items)
+        # print("简化测试结果:", preds.sigmoid())  # 应接近1.0
+        # loss = criterion(preds, test_labels.float())
+        # print("简化测试loss:", loss.item())  # 应明显小于398
+
+
+
         while s + args.batch_size <= len(train_cf):
             batch = get_feed_dict(train_cf, s, s + args.batch_size)
-            print(batch)
+            #print(batch)
+            print(f"Epoch {epoch} - 正样本比例: {batch['labels'].float().mean().item():.2%}")
             batch_loss, _, _, _ = model(batch)
             # batch_loss = batch_loss
             optimizer.zero_grad()
             torch.cuda.empty_cache()
             batch_loss.backward(retain_graph=True)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            # 添加梯度检查
+            total_norm = 0
+            for p in model.parameters():
+                if p.grad is not None:
+                    param_norm = p.grad.data.norm(2)
+                    total_norm += param_norm.item() ** 2
+            print(f"梯度范数: {total_norm ** 0.5:.6f}")  # 正常应大于1e-3
+
+
             optimizer.step()
 
             loss = loss +batch_loss
